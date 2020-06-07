@@ -1,0 +1,49 @@
+功能模块：
+	一、商品搜索
+	二、索引库同步
+	
+实现：
+	一、商品搜索
+		usian_search_web
+			前台接收的商品id和带分页条件查询ES中商品的信息
+			public List<SearchItem> selectByQ（）{...}
+			
+		usian_search_feign
+			feign层注意参数的接收
+			
+		usian_search_service
+			分页查询名字、类别、描述、卖点包含q的商品
+			 public List<SearchItem> selectByQ(String q, Long page, Integer pageSize) {。。。}
+			进行高亮查询
+			HighlightBuilder highlightBuilder = new HighlightBuilder();
+			返回结果
+		测试
+	
+	二、索引库同步
+		需求：
+			后台新增商品后需要把商品同步到索引库
+			
+		分析：
+			方案一：先调用usian_manage_sevice添加商品，再调用usian_search_service服务同步索引库。
+				缺点：
+					1、系统间耦合性太强
+					2、业务逻辑以同步的方式运行，太耗费时间
+			方案二：使用消息中间件
+				行
+				
+		实现：
+			a、common_mapper
+				SQL书写
+			b、usian_search_service
+				pom.xml依赖 yml的配置
+				// 1、根据商品id查询商品信息。
+				  SearchItem searchItem
+				 //2、添加商品到索引库
+				  restHighLevelClient.index(indexRequest,RequestOptions.DEFAULT);
+				 //3、返回
+				  return response.getShardInfo().getFailed();
+			c、usian_item_service
+				pom.xml依赖 yml的配置
+				//添加商品发布消息到mq
+					amqpTemplate.convertAndSend("item_exchage","item.add", itemId);
+			d、测试

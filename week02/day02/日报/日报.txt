@@ -1,0 +1,76 @@
+2020/06/09
+	学习大纲：
+		单点登录介绍
+		工程搭建
+		注册信息校验
+		用户的注册，登录，通过token查询用户信息，退出登录
+		
+		
+		一、单点登录介绍
+			介绍：
+				SSO英文全称Single Sign On，单点登录。
+					SSO是在多个应用系统中，用户只需要登录一次就可以访问所有相互信任的应用系统
+			为什么要使用它
+				单点登录系统是使用redis模拟Session，实现Session的统一管理。
+				解决了使用tomcat集群环境下会出现要求用户多次登录的情况。
+				
+				
+		二、需求分析
+			登录;	
+				把用户信息装到redis(token，user)，再把token装到cookie(token_key,token)
+			查询：
+				先从cookie中取出token，再通过token从redis中查询用户信息
+			
+				
+		三、工程搭建
+			usian_sso_service
+				pom.xml
+					配置：web启动器，eureka-client，common_redis
+				application.yml
+					配置：eureka注册信息，mysql连接,redis集群信息
+				启动类：
+					@SpringBootApplication
+					@EnableDiscoveryClient
+					@MapperScan("com.usian.mapper")
+					
+			usian_sso_feign
+				@FeignClient("usian-sso-service")
+				public interface SSOServiceFeignClient {。。。。}
+				
+			usian_sso_web
+				pom.xml
+					配置：web启动器，eureka-client，common_redis
+				application.yml
+					配置：eureka注册信息，mysql连接,redis集群信息
+				启动类：
+					@SpringBootApplication
+					@EnableDiscoveryClient
+					@EnableFeignClients
+					
+		四、具体代码逻辑
+			a、注册信息校验
+				/frontend /sso/checkUserInfo/{checkValue}/{checkFlag}
+					checkValue: 用户名或手机号离焦后查询的参数
+					checkFlag  1:校验用户名是否存在2:校验用户手机号是否存在
+					
+					
+			b、用户注册
+				/frontend /sso/userRegister
+					用于Pojo对象接收，后台直接逆向工程insert保存到数据库。
+					注意使用MD5Utils.digest给密码加密处理
+			
+			c、用户登录
+				/frontend /sso/userLogin
+						将用户传来的密码加密处理后与数据库的密码进行比较
+						判断用户名密码是否正确。
+						登录成功后生成token
+						把用户信息保存到redis 设置key的过期时间
+						
+			d、查询用户登录是否过期
+				/frontend /sso/getUserByToken/{token}
+				如果有则显示登录着姓名，并在后端重置key的过期时间。
+				
+			e、退出登录
+				/frontend /sso/logOut
+						将redis中的key值删除即可
+							redisClient.del(USER_INFO + ":" + token);
